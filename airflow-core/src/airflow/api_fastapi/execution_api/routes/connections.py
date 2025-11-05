@@ -19,6 +19,8 @@ from __future__ import annotations
 
 import logging
 
+from urllib.parse import unquote
+
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 
 from airflow.api_fastapi.execution_api.datamodels.connection import ConnectionResponse
@@ -51,7 +53,7 @@ log = logging.getLogger(__name__)
 
 
 @router.get(
-    "/{connection_id}",
+    "/{connection_id:path}",
     responses={
         status.HTTP_401_UNAUTHORIZED: {"description": "Unauthorized"},
         status.HTTP_403_FORBIDDEN: {"description": "Task does not have access to the connection"},
@@ -59,14 +61,16 @@ log = logging.getLogger(__name__)
 )
 def get_connection(connection_id: str) -> ConnectionResponse:
     """Get an Airflow connection."""
+    decoded_id = unquote(connection_id)
+    log.debug("Decoded execution API conn_id '%s' -> '%s'", connection_id, decoded_id)
     try:
-        connection = Connection.get_connection_from_secrets(connection_id)
+        connection = Connection.get_connection_from_secrets(decoded_id)
     except AirflowNotFoundException:
         raise HTTPException(
             status.HTTP_404_NOT_FOUND,
             detail={
                 "reason": "not_found",
-                "message": f"Connection with ID {connection_id} not found",
+                "message": f"Connection with ID {decoded_id} not found",
             },
         )
     return ConnectionResponse.model_validate(connection)

@@ -913,6 +913,25 @@ class TestConnectionOperations:
         assert isinstance(result, ErrorResponse)
         assert result.error == ErrorType.CONNECTION_NOT_FOUND
 
+    def test_connection_get_with_slash_in_id(self):
+        """Ensure conn_id containing '/' is safely URL encoded."""
+
+        def handle_request(request: httpx.Request) -> httpx.Response:
+            assert request.url.path == "/connections/dev-env%2Fproject-name"
+            return httpx.Response(
+                status_code=200,
+                json={
+                    "conn_id": "dev-env/project-name",
+                    "conn_type": "mysql",
+                },
+            )
+
+        client = make_client(transport=httpx.MockTransport(handle_request))
+        result = client.connections.get(conn_id="dev-env/project-name")
+
+        assert isinstance(result, ConnectionResponse)
+        assert result.conn_id == "dev-env/project-name"
+
 
 class TestAssetEventOperations:
     @pytest.mark.parametrize(
